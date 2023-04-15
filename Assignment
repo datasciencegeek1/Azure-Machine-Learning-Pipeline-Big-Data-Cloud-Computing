@@ -1,0 +1,61 @@
+import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
+
+# Mapper function
+def mapper(rows):
+    return [map_row(row) for row in rows]
+
+def map_row(row):
+    passenger_id = row[0]
+    return (passenger_id, 1)
+
+# Shuffle function
+def shuffle(mapper_out):
+    shuffled_data = {}
+
+    for key, value in mapper_out:
+        if key not in shuffled_data:
+            shuffled_data[key] = [value]
+        else:
+            shuffled_data[key].append(value)
+    return shuffled_data
+
+# Reducer function
+def reducer(KeyValuePair):
+    key, value = KeyValuePair
+    return (key, sum(value))
+
+
+# Read file in dataframe
+map_in = pd.read_csv("AComp_Passenger_data_no_error.csv", header=None, 
+               names=["Passenger id", "FlightId", "From Airport",
+                      "Destination Airport", "Departure Time", 
+                      "Flight Time"])
+
+
+# Drop duplicate values
+map_in = map_in.drop_duplicates()
+
+# Create a thread pool with 4 threads and run mapper function
+with ThreadPoolExecutor(max_workers=4) as executor:
+    # Execute the mapper function concurrently on the thread pool
+    mapper_output = list(executor.map(mapper, [map_in.values[i::4] for i in range(4)]))
+
+# Flatten the mapper output list
+mapper_output = [item for sublist in mapper_output for item in sublist]
+
+# Shuffle the data
+shuffled_data = shuffle(mapper_output)
+
+# Execute the reducer function concurrently on the thread pool
+with ThreadPoolExecutor(max_workers=4) as executor:
+    reduced_data = list(executor.map(reducer, shuffled_data.items()))
+
+# sort the reduced data by the number of flights taken by each passenger
+sorted_data = sorted(reduced_data, key=lambda x: x[1], reverse=True)
+
+# print the top 10 travellers
+print("Top 10 travellers:")
+for i in range(10):
+    print(f"{i+1}. Passenger ID: {sorted_data[i][0]}, Flights taken: {sorted_data[i][1]}")
+
