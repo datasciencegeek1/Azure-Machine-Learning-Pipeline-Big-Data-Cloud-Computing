@@ -9,7 +9,7 @@ def map_row(row):
     passenger_id = row[0]
     return (passenger_id, 1)
 
-# Shuffle function
+# Shuffle function - tranferring data from mapper to reducer
 def shuffle(mapper_out):
     shuffled_data = {}
 
